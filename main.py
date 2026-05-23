@@ -5,51 +5,46 @@ import json
 import requests
 from datetime import datetime
 
-# --- သင်ရလာတဲ့ Publish to web CSV Link ကို ဒီမှာ ထည့်ပါ ---
-SHEET_CSV_URL = "ဒီနေရာမှာ_CSV_Link_ကိုအစားထိုးပါ"
+# --- သင့်ရဲ့ Google Sheet CSV Link ---
+SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/14yK0foxzyjI7ZyYRPtEWAkO4ifG1EgITAttE8T_8YBE/export?format=csv"
 LICENSE_FILE = ".session_data"
 
 def get_unique_id():
-    """ဖုန်းတစ်လုံးချင်းစီအတွက် မပြောင်းလဲသော Unique ID ထုတ်ပေးခြင်း"""
     try:
-        # Termux အတွက် Android ID ကို ယူခြင်း
+        # Android ID ကို ယူခြင်း
         android_id = os.popen("settings get secure android_id").read().strip()
         if not android_id or "null" in android_id:
-            # တကယ်လို့ မရရင် Hardware info တွေကို သုံးမယ်
             import platform
             android_id = f"{platform.node()}-{platform.processor()}"
         
         unique_hash = hashlib.md5(android_id.encode()).hexdigest().upper()
-        return f"KN-{unique_hash[:12]}"
+        # သင့်ပုံထဲကအတိုင်း KN- နောက်မှာ ၁၀ လုံးပဲ ယူပါမယ်
+        return f"KN-{unique_hash[:10]}"
     except:
-        return "KN-UNKNOWN-DEVICE"
+        return "KN-UNKNOWN"
 
 def check_online(my_id):
-    """Google Sheet မှ ID နှင့် ရက်စွဲကို စစ်ဆေးခြင်း"""
     try:
+        # Google Sheet မှ CSV ကို ဖတ်ခြင်း
         response = requests.get(SHEET_CSV_URL, timeout=10)
-        if response.status_code != 200:
-            return False, "Server Error"
-            
         lines = response.text.splitlines()
+        
         for line in lines:
             parts = line.split(',')
             if len(parts) >= 2:
                 s_id = parts[0].strip()
                 s_expiry = parts[1].strip()
-                s_status = parts[2].strip() if len(parts) > 2 else "Active"
                 
-                if s_id == my_id and s_status.lower() == "active":
-                    # Offline သုံးနိုင်ရန် သိမ်းဆည်းခြင်း
+                if s_id == my_id:
+                    # အောင်မြင်ရင် Offline အတွက် သိမ်းမယ်
                     with open(LICENSE_FILE, "w") as f:
                         json.dump({"id": my_id, "expiry": s_expiry}, f)
                     return True, s_expiry
         return False, "Unauthorized"
-    except:
-        return False, "Connection Error"
+    except Exception as e:
+        return False, f"Connection Error"
 
 def check_offline(my_id):
-    """Offline စစ်ဆေးခြင်း"""
     if not os.path.exists(LICENSE_FILE):
         return False, None
     try:
@@ -68,26 +63,30 @@ def main():
     os.system("clear")
     print(f"--- DEVICE ID: {my_id} ---")
     
-    # ၁။ Offline အရင်စစ်မယ်
+    # ၁။ Offline အရင်စစ်
     valid, expiry = check_offline(my_id)
     
-    # ၂။ Offline မရရင် (သို့မဟုတ်) ပထမဆုံးအကြိမ်ဆိုရင် Online စစ်မယ်
+    # ၂။ မရရင် Online စစ်
     if not valid:
-        print("[*] Validating license online...")
+        print("[*] Checking license online...")
         valid, expiry = check_online(my_id)
         
     if valid:
         print(f"[+] Access Granted! Expiry: {expiry}")
         print("-" * 35)
-        # --- ဤနေရာတွင် သင့်၏ starlink.so ကို ခေါ်သုံးပါ ---
+        # --- starlink.so ကို ခေါ်ယူခြင်း ---
         try:
             import starlink
-            starlink.main() # သို့မဟုတ် starlink.start()
+            # starlink ထဲက main သို့မဟုတ် start ကို ခေါ်ပါ
+            if hasattr(starlink, 'main'):
+                starlink.main()
+            elif hasattr(starlink, 'start'):
+                starlink.start()
         except ImportError:
-            print("[!] starlink.so file ကို ရှာမတွေ့ပါ။")
+            print("[!] starlink.so file မရှိပါ။")
     else:
-        print(f"[!] Access Denied. Your ID is not registered or expired.")
-        print(f"Please send your ID to Admin: {my_id}")
+        print(f"[!] Access Denied. Your ID is not registered.")
+        print(f"Please add this ID to Google Sheet: {my_id}")
 
 if __name__ == "__main__":
     main()
