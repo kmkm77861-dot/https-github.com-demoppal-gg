@@ -17,7 +17,7 @@ C_GREEN   = "\033[92m"
 C_YELLOW  = "\033[93m"
 C_RED     = "\033[91m"
 C_CYAN    = "\033[96m"
-C_WHITE   = "\033[97m"  # <--- ဒီကောင်လေး ကျန်ခဲ့လို့ အခု ထည့်ပေးလိုက်ပါပြီ
+C_WHITE   = "\033[97m"
 C_BOLD    = "\033[1m"
 C_END     = "\033[0m"
 
@@ -69,7 +69,7 @@ def check_online(my_id):
                     if is_expired(s_expiry):
                         return False, "License Expired"
                         
-                    # အောင်မြင်ရင် နောက်တစ်ခါ Offline သုံးလို့ရအောင် ဖုန်းထဲမှာ သိမ်းဆည်းမယ်
+                    # Save for Offline validation
                     with open(LICENSE_FILE, "w") as f:
                         json.dump({"id": my_id, "expiry": s_expiry}, f)
                     return True, s_expiry
@@ -96,7 +96,7 @@ def check_offline(my_id):
     return False, None
 
 def run_starlink():
-    print(f"\n{C_GREEN}[*] Launching Starlink Module...{C_END}")
+    print(f"\n{C_BLUE}[*] Launching Starlink Module...{C_END}")
     time.sleep(1)
     try:
         import starlink
@@ -115,10 +115,10 @@ def main():
     while True:
         show_banner(my_id)
         
-        # ၁။ Offline အရင်စစ်မယ်
+        # 1. Check Offline Database first
         valid, expiry = check_offline(my_id)
         
-        # ၂။ Offline အဆင်မပြေရင် (သို့) သက်တမ်းကုန်နေရင် Online ထပ်စစ်မယ်
+        # 2. Check Online (GitHub) if offline check fails
         if not valid:
             print(f"{C_BLUE}[*] Checking license online via GitHub...{C_END}")
             time.sleep(1)
@@ -132,11 +132,12 @@ def main():
             break
         else:
             print(f"\n{C_RED}{C_BOLD}[!] ACCESS DENIED: {expiry}{C_END}")
-            print(f"{C_WHITE} ID ကို GitHub ထဲမှာ အရင်သွားထည့်ပေးပါ။{C_END}")
+            print(f"{C_WHITE} Please register this ID on GitHub database.{C_END}")
             print(f"{C_CYAN}" + "-"*45 + f"{C_END}")
             
-            # Enter ခေါက်ပြီး ပြန်စစ်ခိုင်းမယ့်နေရာ
-            input(f"{C_BOLD}{C_BLUE}[►] ID ထည့်ပြီးပါက Re-check လုပ်ရန် ENTER ခေါက်ပါ... {C_END}")
+            # Press Enter to Re-check
+            input(f"{C_BOLD}{C_BLUE}[►] Press ENTER to Re-check License... {C_END}")
 
 if __name__ == "__main__":
     main()
+    
