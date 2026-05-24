@@ -1,92 +1,26 @@
-import os
-import hashlib
-import time
-import json
-import requests
-from datetime import datetime
+import os, hashlib, requests
 
-# --- သင့်ရဲ့ Google Sheet CSV Link ---
-SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/14yK0foxzyjI7ZyYRPtEWAkO4ifG1EgITAttE8T_8YBE/export?format=csv"
-LICENSE_FILE = ".session_data"
+# ၁။ စက်ရဲ့ ID (HWID) ကို ထုတ်ယူပုံ
+def get_hwid():
+    model = os.popen("getprop ro.product.model").read().strip()
+    serial = os.popen("getprop ro.serialno").read().strip()
+    hwid_raw = f"{model}{serial}"
+    return hashlib.md5(hwid_raw.encode()).hexdigest().upper()
 
-def get_unique_id():
-    try:
-        # Android ID ကို ယူခြင်း
-        android_id = os.popen("settings get secure android_id").read().strip()
-        if not android_id or "null" in android_id:
-            import platform
-            android_id = f"{platform.node()}-{platform.processor()}"
-        
-        unique_hash = hashlib.md5(android_id.encode()).hexdigest().upper()
-        # သင့်ပုံထဲကအတိုင်း KN- နောက်မှာ ၁၀ လုံးပဲ ယူပါမယ်
-        return f"KN-{unique_hash[:10]}"
-    except:
-        return "KN-UNKNOWN"
+# ၂။ အွန်လိုင်းကနေ လိုင်စင်စစ်ဆေးပုံ
+KEY_URL = "https://raw.githubusercontent.com/ytun9959-design/Auth/refs/heads/main/key.txt"
 
-def check_online(my_id):
-    try:
-        # Google Sheet မှ CSV ကို ဖတ်ခြင်း
-        response = requests.get(SHEET_CSV_URL, timeout=10)
-        lines = response.text.splitlines()
-        
-        for line in lines:
-            parts = line.split(',')
-            if len(parts) >= 2:
-                s_id = parts[0].strip()
-                s_expiry = parts[1].strip()
-                
-                if s_id == my_id:
-                    # အောင်မြင်ရင် Offline အတွက် သိမ်းမယ်
-                    with open(LICENSE_FILE, "w") as f:
-                        json.dump({"id": my_id, "expiry": s_expiry}, f)
-                    return True, s_expiry
-        return False, "Unauthorized"
-    except Exception as e:
-        return False, f"Connection Error"
-
-def check_offline(my_id):
-    if not os.path.exists(LICENSE_FILE):
-        return False, None
-    try:
-        with open(LICENSE_FILE, "r") as f:
-            data = json.load(f)
-        if data['id'] == my_id:
-            expiry_dt = datetime.strptime(data['expiry'], "%Y-%m-%d %H:%M:%S")
-            if datetime.now() < expiry_dt:
-                return True, data['expiry']
-    except:
-        pass
-    return False, None
-
-def main():
-    my_id = get_unique_id()
-    os.system("clear")
-    print(f"--- DEVICE ID: {my_id} ---")
+def perform_online_check():
+    my_id = get_hwid()
+    response = requests.get(KEY_URL).text
+    # key.txt ထဲမှာ ID|KEY|EXPIRY ပုံစံနဲ့ ရှိနေတာကို စစ်ဆေးတာပါ
+    for line in response.split('\n'):
+        if my_id in line:
+            server_key = line.split('|')[1]
+            user_key = input("Activation Key ထည့်ပါ: ")
+            if user_key == server_key:
+                print("လိုင်စင် အောင်မြင်ပါတယ်!")
+                return True
+    print("လိုင်စင် မရှိပါ သို့မဟုတ် Key မှားနေပါတယ်။")
+    return False
     
-    # ၁။ Offline အရင်စစ်
-    valid, expiry = check_offline(my_id)
-    
-    # ၂။ မရရင် Online စစ်
-    if not valid:
-        print("[*] Checking license online...")
-        valid, expiry = check_online(my_id)
-        
-    if valid:
-        print(f"[+] Access Granted! Expiry: {expiry}")
-        print("-" * 35)
-        # --- starlink.so ကို ခေါ်ယူခြင်း ---
-        try:
-            import starlink
-            # starlink ထဲက main သို့မဟုတ် start ကို ခေါ်ပါ
-            if hasattr(starlink, 'main'):
-                starlink.main()
-            elif hasattr(starlink, 'start'):
-                starlink.start()
-        except ImportError:
-            print("[!] starlink.so file မရှိပါ။")
-    else:
-        print(f"[!] Access Denied. Your ID is not registered.")
-        print(f"Please add this ID to Google Sheet: {my_id}")
-
-if __name__ == "__main__":
-    main()
