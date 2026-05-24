@@ -17,6 +17,7 @@ C_GREEN   = "\033[92m"
 C_YELLOW  = "\033[93m"
 C_RED     = "\033[91m"
 C_CYAN    = "\033[96m"
+C_WHITE   = "\033[97m"  # <--- ဒီကောင်လေး ကျန်ခဲ့လို့ အခု ထည့်ပေးလိုက်ပါပြီ
 C_BOLD    = "\033[1m"
 C_END     = "\033[0m"
 
@@ -68,7 +69,7 @@ def check_online(my_id):
                     if is_expired(s_expiry):
                         return False, "License Expired"
                         
-                    # Offline သုံးဖို့ သိမ်းဆည်းမယ်
+                    # အောင်မြင်ရင် နောက်တစ်ခါ Offline သုံးလို့ရအောင် ဖုန်းထဲမှာ သိမ်းဆည်းမယ်
                     with open(LICENSE_FILE, "w") as f:
                         json.dump({"id": my_id, "expiry": s_expiry}, f)
                     return True, s_expiry
@@ -117,10 +118,10 @@ def main():
         # ၁။ Offline အရင်စစ်မယ်
         valid, expiry = check_offline(my_id)
         
-        # ၂။ Offline အဆင်မပြေရင် Online စစ်မယ်
+        # ၂။ Offline အဆင်မပြေရင် (သို့) သက်တမ်းကုန်နေရင် Online ထပ်စစ်မယ်
         if not valid:
             print(f"{C_BLUE}[*] Checking license online via GitHub...{C_END}")
-            time.sleep(1) # ရုပ်ထွက်လေး ပိုမိုက်သွားအောင် ခဏစောင့်ခိုင်းတာပါ
+            time.sleep(1)
             valid, expiry = check_online(my_id)
             
         if valid:
@@ -128,9 +129,8 @@ def main():
             print(f"{C_BOLD} Expiry Date   : {C_YELLOW}{expiry}{C_END}")
             print(f"{C_CYAN}" + "="*45 + f"{C_END}")
             run_starlink()
-            break # အောင်မြင်ရင် Loop ထဲက ထွက်မယ်
+            break
         else:
-            # ကျရှုံးခဲ့ရင် ပြသမယ့် ပုံစံ
             print(f"\n{C_RED}{C_BOLD}[!] ACCESS DENIED: {expiry}{C_END}")
             print(f"{C_WHITE} ID ကို GitHub ထဲမှာ အရင်သွားထည့်ပေးပါ။{C_END}")
             print(f"{C_CYAN}" + "-"*45 + f"{C_END}")
